@@ -1,0 +1,4 @@
+{
+	"python.analysis.generateWithTypeAnnotation": true,
+	"python.analysis.typeCheckingMode": "standard"
+}
