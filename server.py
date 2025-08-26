@@ -1,10 +1,12 @@
+from typing import Any
+
 import rpyc
 import uuid
 
 class TicTacToeService(rpyc.Service):
-    rooms: list[dict] = []
+    rooms: list[dict[str, Any]] = []
 
-    def __init__(self):
+    def __init__(self) -> None:
         pass
 
     def on_connect(self, conn) -> None:
@@ -14,9 +16,9 @@ class TicTacToeService(rpyc.Service):
         print("Client disconnected.")
 
     def exposed_create_room(self, client_id: uuid.UUID) -> uuid.UUID:
-        room_id = uuid.uuid4()
+        room_id: uuid.UUID = uuid.uuid4()
 
-        room = {
+        room: dict[str, Any] = {
             "created_by": client_id,
             "room_id": room_id
         }
@@ -33,13 +35,16 @@ class TicTacToeService(rpyc.Service):
     def exposed_join_room(self, room_id: uuid.UUID, client_id: uuid.UUID) -> bool:
         for room in TicTacToeService.rooms:
             if room["room_id"] == room_id:
-                room["oponent"] = client_id
+                room["opponent"] = client_id
                 
                 return True
             
         return False
 
-
+    def exposed_get_gamestate(self) -> list:
+        return ["","","",
+                "","","",
+                "","",""]
 
 if __name__ == "__main__":
     from rpyc.utils.server import ThreadedServer
