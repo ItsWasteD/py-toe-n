@@ -1,13 +1,17 @@
-from typing import Any, TYPE_CHECKING
+from typing import Any, TYPE_CHECKING, Callable
 
 import rpyc
 import uuid
 
 if TYPE_CHECKING:
-    from client import Client
+    from client import Client, ClientService
 
 class TicTacToeService(rpyc.Service):
     rooms: list[dict[str, Any]] = []
+    clients: list["ClientService"] = []
+
+    def exposed_register(self, client: "ClientService"):
+        self.clients.append(client)
 
     def __init__(self) -> None:
         pass
@@ -27,7 +31,7 @@ class TicTacToeService(rpyc.Service):
 
     # ROOM MANAGEMENT
 
-    def exposed_create_room(self, client: "Client") -> uuid.UUID:
+    def exposed_create_room(self, client: "Client", callback: Callable) -> uuid.UUID:
         room_id: uuid.UUID = uuid.uuid4()
 
         room: dict[str, Any] = {
@@ -38,12 +42,15 @@ class TicTacToeService(rpyc.Service):
 
         TicTacToeService.rooms.append(room)
 
+        for clientService in list(self.clients):
+            clientService.update_rooms()
+
         return room_id
     
     def exposed_get_rooms(self) -> list[dict]:
         return TicTacToeService.rooms
     
-    def exposed_join_room(self, room_id: uuid.UUID, client: "Client") -> bool:
+    def exposed_join_room(self, room_id: uuid.UUID, client: "Client", callback: Callable) -> bool:
         for room in TicTacToeService.rooms:
             if room["room_id"] == room_id:
                 room["clients"].append(client)

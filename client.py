@@ -6,9 +6,14 @@ from typing import Any
 import rpyc
 import uuid
 
-c: rpyc.Connection = rpyc.connect("localhost", 18861)
-
 title_font: font.Font = None
+
+class ClientService(rpyc.Service):
+    def exposed_update_rooms(self):
+        pass
+
+c: rpyc.Connection = rpyc.connect("localhost", 18861)
+c.root.register(ClientService())
 
 class Client(tk.Tk):
     def __init__(self, *args: Any, **kwargs: Any) -> None:
@@ -42,11 +47,8 @@ class Client(tk.Tk):
 
         frame.tkraise()
 
-    def show_room_list(self, root: tk.Tk) -> None:
-        pass
-
     def create_room(self) -> uuid.UUID:
-        room_id: uuid.UUID = c.root.create_room(self)
+        room_id: uuid.UUID = c.root.create_room(self, self.frames["RoomList"].refresh)
         self.show_frame("WaitingRoom")
 
         return room_id
@@ -54,14 +56,11 @@ class Client(tk.Tk):
     def join_room(self, room_id: uuid.UUID) -> bool:
         print(f"Join room {room_id}")
 
-        if c.root.join_room(room_id, self):
+        if c.root.join_room(room_id, c):
             self.room_id: uuid.UUID = room_id
             return True
         
         return False
-    
-    def update_gamestate(self) -> None:
-        pass
     
     def get_gamestate(self, room_id: uuid.UUID) -> dict[str, Any]:
             return self.gamestate
@@ -120,8 +119,8 @@ class WaitingRoom(ttk.Frame):
         vs: ttk.Label = ttk.Label(self, text="vs.")
         vs.pack(side="left", fill="x", padx=20)
 
-        c2: ttk.Label = ttk.Label(self, text="Waiting...")
-        c2.pack(side="left", fill="x", padx=5)
+        self.c2: ttk.Label = ttk.Label(self, text="Waiting...")
+        self.c2.pack(side="left", fill="x", padx=5)
 
 class ShowGame(ttk.Frame):
     def __init__(self, parent: ttk.Frame, controller: Client) -> None:
