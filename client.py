@@ -1,5 +1,5 @@
 import tkinter as tk
-from tkinter import ttk
+from tkinter import ttk, font
 
 from typing import Any
 
@@ -8,26 +8,31 @@ import uuid
 
 c: rpyc.Connection = rpyc.connect("localhost", 18861)
 
+title_font: font.Font = None
+
 class Client(tk.Tk):
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         super().__init__(*args, **kwargs)
 
+        self.title("Py-toe-n")
+
+        global title_font
+        title_font = font.Font(family="Helvetica", size=20, weight="bold")
+
         container: ttk.Frame = ttk.Frame(self)
-        container.pack(side="top", fill="both", expand=True)
+        container.pack(side="top", fill="both", expand=True, padx=10, pady=10)
         container.grid_rowconfigure(0, weight=1)
         container.grid_columnconfigure(0, weight=1)
 
         self.frames: dict[str, ttk.Frame] = {}  
-        for F in (MenuPage, RoomList, ShowGame):
+        for F in (MenuPage, RoomList, WaitingRoom, ShowGame):
             page_name: str = F.__name__
             frame = F(parent=container, controller=self)
-            self.frames[page_name]
+            self.frames[page_name] = frame
 
             frame.grid(row=0, column=0, sticky="nsew")
 
         self.show_frame("MenuPage")
-
-        self.client_id: uuid.UUID = uuid.uuid4()
 
     def show_frame(self, name: str) -> None:
         frame: ttk.Frame = self.frames[name]
@@ -40,26 +45,37 @@ class Client(tk.Tk):
     def show_room_list(self, root: tk.Tk) -> None:
         pass
 
-    def create_room(self) -> None:
-        id: uuid.UUID = c.root.create_room(self.client_id)
+    def create_room(self) -> uuid.UUID:
+        room_id: uuid.UUID = c.root.create_room(self)
+        self.show_frame("WaitingRoom")
 
-    def join_room(self, room_id: uuid.UUID) -> None:
+        return room_id
+
+    def join_room(self, room_id: uuid.UUID) -> bool:
         print(f"Join room {room_id}")
 
-    def show_help(self) -> None:
+        if c.root.join_room(room_id, self):
+            self.room_id: uuid.UUID = room_id
+            return True
+        
+        return False
+    
+    def update_gamestate(self) -> None:
         pass
+    
+    def get_gamestate(self, room_id: uuid.UUID) -> dict[str, Any]:
+            return self.gamestate
 
 class MenuPage(ttk.Frame):
     def __init__(self, parent: ttk.Frame, controller: Client) -> None:
         ttk.Frame.__init__(self, parent)
         self.controller: Client = controller
 
-        label: ttk.Label = ttk.Label(self, text="Py-toe-n")
+        label: ttk.Label = ttk.Label(self, text="Py-toe-n", font=title_font)
         label.pack(side="top", fill="y", padx=5, pady=10)
 
         ttk.Button(self, text="Create room", command=controller.create_room).pack(side="top")
         ttk.Button(self, text="Join room", command=lambda: controller.show_frame("RoomList")).pack(side="top")
-        ttk.Button(self, text="Help", command=controller.show_help).pack(side="top")
 
 
 class RoomList(ttk.Frame):
@@ -67,7 +83,7 @@ class RoomList(ttk.Frame):
         ttk.Frame.__init__(self, parent)
         self.controller: Client = controller
 
-        label: ttk.Label = ttk.Label(self, text="Room List")
+        label: ttk.Label = ttk.Label(self, text="Room List", font=title_font)
         label.pack(side="top", fill="y", padx=5, pady=10)
 
         self.room_buttons_frame: ttk.Frame = ttk.Frame(self)
@@ -90,6 +106,23 @@ class RoomList(ttk.Frame):
         self.controller.join_room(room_id)
         self.controller.show_frame("ShowGame")
 
+class WaitingRoom(ttk.Frame):
+    def __init__(self, parent: ttk.Frame, controller: Client) -> None:
+        ttk.Frame.__init__(self, parent)
+        self.controller: Client = controller
+
+        label: ttk.Label = ttk.Label(self, text="Waiting Room", font=title_font)
+        label.pack(side="top", fill="y", padx=5, pady=10)
+
+        c1: ttk.Label = ttk.Label(self, text=id(self))
+        c1.pack(side="left", fill="x", padx=5)
+
+        vs: ttk.Label = ttk.Label(self, text="vs.")
+        vs.pack(side="left", fill="x", padx=20)
+
+        c2: ttk.Label = ttk.Label(self, text="Waiting...")
+        c2.pack(side="left", fill="x", padx=5)
+
 class ShowGame(ttk.Frame):
     def __init__(self, parent: ttk.Frame, controller: Client) -> None:
         ttk.Frame.__init__(self, parent)
@@ -102,7 +135,7 @@ class ShowGame(ttk.Frame):
         for i, field in enumerate(gamestate):
             col: int = i % 3
             row: int = i // 3
-            button: ttk.Button = ttk.Button(self, text=field, command=lambda: c.root.check(col, row, controller.client_id))
+            button: ttk.Button = ttk.Button(self, text=field, command=lambda: c.root.check(i, controller))
             button.grid(column=col, row=row, sticky="nsew", padx=2, pady=2)
             self.buttons.append(button)
 
