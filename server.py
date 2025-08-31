@@ -1,66 +1,24 @@
 from typing import Any, TYPE_CHECKING, Callable
 
 import rpyc
-import uuid
 
 if TYPE_CHECKING:
-    from client import Client, ClientService
+    from client import Client
 
 class TicTacToeService(rpyc.Service):
     rooms: list[dict[str, Any]] = []
-    clients: list["ClientService"] = []
-
-    def exposed_register(self, client: "ClientService"):
-        self.clients.append(client)
+    clients: list[rpyc.Connection] = []
 
     def __init__(self) -> None:
         pass
 
     def on_connect(self, conn) -> None:
-        print("Client connected.")
+        print(f"Client connected. {conn}")
+        self.clients.append(conn)
 
     def on_disconnect(self, conn) -> None:
-        for room in TicTacToeService.rooms:
-            if conn in room["clients"]:
-                room["clients"].remove(conn)
-                print("Client disconnected.")
-
-                if not room["clients"]:
-                    TicTacToeService.rooms.remove(room)
-                    print("Room deleted.")
-
-    # ROOM MANAGEMENT
-
-    def exposed_create_room(self, client: "Client") -> uuid.UUID:
-        room_id: uuid.UUID = uuid.uuid4()
-
-        room: dict[str, Any] = {
-            "created_by": client,
-            "room_id": room_id,
-            "clients": [client]
-        }
-
-        TicTacToeService.rooms.append(room)
-
-        for clientService in list(self.clients):
-            if client == clientService:
-                continue
-            
-            clientService.update_rooms()
-
-        return room_id
-    
-    def exposed_get_rooms(self) -> list[dict]:
-        return TicTacToeService.rooms
-    
-    def exposed_join_room(self, room_id: uuid.UUID, client: "Client", callback: Callable) -> bool:
-        for room in TicTacToeService.rooms:
-            if room["room_id"] == room_id:
-                room["clients"].append(client)
-                
-                return True
-            
-        return False
+        if conn in self.clients:
+            self.clients.remove(conn)
 
     # GAME MANAGEMENT
 
