@@ -31,7 +31,7 @@ class TicTacToeService(rpyc.Service):
 
     # ROOM MANAGEMENT
 
-    def exposed_create_room(self, client: "Client", callback: Callable) -> uuid.UUID:
+    def exposed_create_room(self, client: "Client") -> uuid.UUID:
         room_id: uuid.UUID = uuid.uuid4()
 
         room: dict[str, Any] = {
@@ -43,6 +43,9 @@ class TicTacToeService(rpyc.Service):
         TicTacToeService.rooms.append(room)
 
         for clientService in list(self.clients):
+            if client == clientService:
+                continue
+            
             clientService.update_rooms()
 
         return room_id

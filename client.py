@@ -8,12 +8,15 @@ import uuid
 
 title_font: font.Font = None
 
-class ClientService(rpyc.Service):
-    def exposed_update_rooms(self):
-        pass
-
 c: rpyc.Connection = rpyc.connect("localhost", 18861)
-c.root.register(ClientService())
+
+class ClientService(rpyc.Service):
+    def __init__(self, client: "Client"):
+        self.client: "Client" = client
+
+    def exposed_update_rooms(self):
+        print("Client: Updating roomlist")
+        self.client.after(0,self.client.frames["RoomList"].refresh)
 
 class Client(tk.Tk):
     def __init__(self, *args: Any, **kwargs: Any) -> None:
@@ -48,7 +51,7 @@ class Client(tk.Tk):
         frame.tkraise()
 
     def create_room(self) -> uuid.UUID:
-        room_id: uuid.UUID = c.root.create_room(self, self.frames["RoomList"].refresh)
+        room_id: uuid.UUID = c.root.create_room(self)
         self.show_frame("WaitingRoom")
 
         return room_id
@@ -89,6 +92,7 @@ class RoomList(ttk.Frame):
         self.room_buttons_frame.pack(side="top", fill="both", expand=True)
 
     def refresh(self) -> None:
+        print("refresh called")
         for widget in self.room_buttons_frame.winfo_children():
             widget.destroy()
 
@@ -144,4 +148,5 @@ class ShowGame(ttk.Frame):
 
 if __name__ == "__main__":
     client: Client = Client()
+    c.root.register(ClientService(client))
     client.mainloop()
