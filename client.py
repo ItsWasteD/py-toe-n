@@ -17,7 +17,10 @@ class Client(tk.Tk):
         super().__init__(*args, **kwargs)
 
         self.title("Py-toe-n")
-        self.geometry("300x400")
+        self.geometry("300x300")
+
+        self.style = ttk.Style(self)
+        self.style.configure("Starting.TFrame", background="green")
 
         global title_font
         title_font = font.Font(family="Helvetica", size=20, weight="bold")
@@ -41,11 +44,20 @@ class Client(tk.Tk):
         c.root.ready(self.update_callback)
 
     def update_callback(self, gamestate: dict[str, Any], player_nr: str = "") -> None:
+        self.gamestate = gamestate
         if gamestate["state"] == "waiting":
             self.player_nr = player_nr
             self.after(0, lambda: self.show_frame("GameFrame"))
+            if self.player_nr == gamestate["turn"]:
+                self.after(0, lambda: self.frames["GameFrame"].configure(style="Starting.TFrame"))
+            else:
+                self.after(0, lambda: self.frames["GameFrame"].configure(style="TFrame"))
         elif gamestate["state"] == "playing":
             self.after(0, self.update_buttons(gamestate["field"]))
+            if self.player_nr == gamestate["turn"]:
+                self.after(0, lambda: self.frames["GameFrame"].configure(style="Starting.TFrame"))
+            else:
+                self.after(0, lambda: self.frames["GameFrame"].configure(style="TFrame"))
         elif gamestate["state"] == "finished":
             text = "You won!!!" if gamestate["winner"] == self.player_nr else "You lose!!!"
             self.after(0, self.frames["EndFrame"].label.config(text=text))
@@ -84,16 +96,13 @@ class GameFrame(ttk.Frame):
         ttk.Frame.__init__(self, parent)
         self.controller: Client = controller
 
-        self.label: ttk.Label = ttk.Label(self, text="TEST", font=medium_font)
-        self.label.grid(row=0, columnspan=3)
-
         self.buttons: list[ttk.Button] = []
 
         for i in range(9):
             col: int = i % 3
             row: int = i // 3
             button: ttk.Button = ttk.Button(self, text="", command=lambda idx=i: c.root.check(idx, controller.player_nr))
-            button.grid(column=col, row=row+1, sticky="nsew", padx=2, pady=2)
+            button.grid(column=col, row=row, sticky="nsew", padx=2, pady=2)
             self.buttons.append(button)
 
         for i in range(3):
